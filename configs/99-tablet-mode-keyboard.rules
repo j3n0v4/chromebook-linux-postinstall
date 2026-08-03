@@ -1,0 +1,1 @@
+ACTION=="change", SUBSYSTEM=="iio", ATTRS{name}=="cros-ec-accel", RUN+="/usr/local/bin/tablet-mode-toggle.sh"

@@ -1,0 +1,11 @@
+# Private hardware status (not pushed to GitHub)
+HARDWARE-STATUS.md
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor files
+*.swp
+*.swo
+*~
