@@ -19,18 +19,13 @@ After coreboot and Fedora, follow the [chrultrabook post-install guide](https://
 
 | Component | Spec |
 |-----------|------|
-| **Model** | ASUS Chromebook Flip C433/C434 (Amber Lake Y platform) |
-| **CPU** | Intel Core m3-8100Y (2C/4T, 1.1 GHz base / 3.4 GHz turbo, 5W TDP) |
+| **Model** | ASUS Chromebook Flip C433/C434 (Amber Lake Y) |
+| **CPU** | Intel Core m3-8100Y (2C/4T, 1.1 / 3.4 GHz, 5W TDP) |
 | **GPU** | Intel UHD Graphics 615 (Gen9.5, GT2, 24 EUs) |
-| **RAM** | 8 GB LPDDR3 (soldered, not upgradeable) |
-| **Storage** | 58.3 GB eMMC (soldered, not upgradeable — no SSD slot) |
-| **Firmware** | coreboot (flashed via MrChromebox firmware utility script) |
-| **OS** | Fedora 43 XFCE Spin |
-| **Audio** | Internal speakers + 3.5mm jack (needs chrultrabook audio fix) |
-| **Keyboard** | Chromebook layout (needs keyd) |
-| **Touchpad** | I2C touchpad (needs libinput config) |
-| **WiFi** | Intel Wireless-AC 9560 (works out of box on Fedora) |
-| **Bluetooth** | Intel Bluetooth (works out of box on Fedora) |
+| **RAM** | 8 GB LPDDR3 |
+| **Storage** | 58 GB eMMC |
+| **Firmware** | coreboot (MrChromebox) |
+| **OS** | Fedora 43 XFCE |
 
 ## Quick Start
 
