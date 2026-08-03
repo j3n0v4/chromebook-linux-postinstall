@@ -1,6 +1,6 @@
 # Chromebook Linux Post-Install — Fedora on Amber Lake Y
 
-<img src="assets/c434.png" alt="ASUS Chromebook Flip C434" width="400">
+<p align="center"><img src="assets/c434.png" alt="ASUS Chromebook Flip C434" width="400"></p>
 
 > **TL;DR:** I bought a second-hand ASUS Chromebook Flip C434 for €20, flashed coreboot, and installed Fedora. After following the chrultrabook guide, this script fixes what's left: VAAPI, eMMC tuning, touchpad, screen rotation, tablet mode, zram, journald limits, TRIM. Run `postinstall.sh` after the chrultrabook post-install, then reboot.
 
