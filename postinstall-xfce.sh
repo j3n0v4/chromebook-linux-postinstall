@@ -1,6 +1,6 @@
 #!/bin/bash
 # chromebook-linux-postinstall — Post-install configuration for Fedora on Chromebook (coreboot)
-# KDE Plasma 6 Wayland edition
+# Only hardware-specific fixes. No desktop environment configuration.
 # Usage: sudo ./postinstall.sh [--dry-run]
 set -euo pipefail
 
@@ -39,12 +39,12 @@ require_root() {
     fi
 }
 
-TOTAL=15
+TOTAL=12
 CONFIG_DIR="$(cd "$(dirname "$0")" && pwd)/configs"
 
 echo "============================================"
-echo " Chromebook Linux Post-Install — KDE Plasma"
-echo " 15 steps — $( $DRY_RUN && echo 'DRY RUN' || echo 'LIVE' )"
+echo " Chromebook Linux Post-Install"
+echo " 12 steps — $( $DRY_RUN && echo 'DRY RUN' || echo 'LIVE' )"
 echo "============================================"
 echo ""
 
@@ -123,28 +123,33 @@ else
 fi
 
 # ------------------------------------------------------------------
-# Step 5 — Touchpad: KDE Plasma Wayland handles this natively
+# Step 5 — Touchpad: libinput config (natural scroll, tap-to-click)
 # ------------------------------------------------------------------
-echo -e "\n${GREEN}[STEP 5/${TOTAL}]${NC} Touchpad — KDE Plasma Wayland (native)"
+echo -e "\n${GREEN}[STEP 5/${TOTAL}]${NC} Touchpad — libinput configuration"
 
-step_ok "KDE Plasma 6 Wayland handles touchpad natively via System Settings > Input Devices > Touchpad"
-step_ok "No X11 xorg.conf.d needed — KWin/libinput integration is built-in"
+TOUCHPAD_CONF="/etc/X11/xorg.conf.d/30-touchpad.conf"
+if [[ -f "$TOUCHPAD_CONF" ]]; then
+    step_skip "Touchpad config already exists"
+else
+    do_cmd "Create X11 config directory" mkdir -p /etc/X11/xorg.conf.d
+    do_cmd "Copy 30-touchpad.conf" cp "$CONFIG_DIR/30-touchpad.conf" "$TOUCHPAD_CONF"
+fi
 
 # ------------------------------------------------------------------
 # Step 6 — VAAPI: Intel hardware video decode
 # ------------------------------------------------------------------
 echo -e "\n${GREEN}[STEP 6/${TOTAL}]${NC} VAAPI — Intel hardware video decode"
 
-if rpm -q libva-intel-media-driver &>/dev/null; then
-    step_skip "libva-intel-media-driver already installed"
+if rpm -q intel-media-driver &>/dev/null; then
+    step_skip "intel-media-driver already installed"
 else
-    do_cmd "Install libva-intel-media-driver" dnf install -y libva-intel-media-driver
+    do_cmd "Install intel-media-driver" dnf install -y intel-media-driver
 fi
 
 if command -v vainfo &>/dev/null; then
     step_skip "vainfo already installed"
 else
-    do_cmd "Install vainfo" dnf install -y libva-utils
+    do_cmd "Install vainfo" dnf install -y vainfo
 fi
 
 # ------------------------------------------------------------------
@@ -167,82 +172,41 @@ else
 fi
 
 # ------------------------------------------------------------------
-# Step 8 — CPU Governor: performance
+# Step 8 — Xrandr: needed by rotation script
 # ------------------------------------------------------------------
-echo -e "\n${GREEN}[STEP 8/${TOTAL}]${NC} CPU Governor — performance"
+echo -e "\n${GREEN}[STEP 8/${TOTAL}]${NC} Xrandr — Display rotation support"
 
-CURRENT_GOV=$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor 2>/dev/null || echo "unknown")
-if [[ "$CURRENT_GOV" == "performance" ]]; then
-    step_skip "CPU governor already set to performance"
+if command -v xrandr &>/dev/null; then
+    step_skip "xrandr already installed"
 else
-    do_cmd "Set CPU governor to performance" bash -c "echo performance | tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor > /dev/null"
-fi
-
-# Create a systemd service to persist governor across reboots
-GOV_SERVICE="/etc/systemd/system/cpu-governor-performance.service"
-if [[ -f "$GOV_SERVICE" ]]; then
-    step_skip "cpu-governor-performance.service already exists"
-else
-    do_cmd "Create CPU governor persistence service" bash -c "cat > $GOV_SERVICE << 'EOF'
-[Unit]
-Description=Set CPU governor to performance
-After=sysinit.target
-
-[Service]
-Type=oneshot
-ExecStart=/bin/sh -c 'echo performance | tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor > /dev/null'
-RemainAfterExit=yes
-
-[Install]
-WantedBy=multi-user.target
-EOF"
-    do_cmd "Enable CPU governor service" systemctl enable cpu-governor-performance.service
+    do_cmd "Install xrandr" dnf install -y xrandr
 fi
 
 # ------------------------------------------------------------------
-# Step 9 — Swappiness: reduce to 10
+# Step 9 — Screen rotation: systemd user service (NOT udev)
 # ------------------------------------------------------------------
-echo -e "\n${GREEN}[STEP 9/${TOTAL}]${NC} Swappiness — Set to 10"
+echo -e "\n${GREEN}[STEP 9/${TOTAL}]${NC} Screen rotation — systemd user service"
 
-CURRENT_SWAP=$(cat /proc/sys/vm/swappiness 2>/dev/null || echo "unknown")
-if [[ "$CURRENT_SWAP" == "10" ]]; then
-    step_skip "Swappiness already set to 10"
-else
-    do_cmd "Set swappiness to 10" bash -c "echo 10 > /proc/sys/vm/swappiness"
-fi
-
-SYSCTL_CONF="/etc/sysctl.d/90-swappiness.conf"
-if [[ -f "$SYSCTL_CONF" ]]; then
-    step_skip "swappiness sysctl config already exists"
-else
-    do_cmd "Create swappiness sysctl config" bash -c "echo 'vm.swappiness=10' > $SYSCTL_CONF"
-fi
-
-# ------------------------------------------------------------------
-# Step 10 — Screen rotation: KDE Wayland-compatible rotation script
-# ------------------------------------------------------------------
-echo -e "\n${GREEN}[STEP 10/${TOTAL}]${NC} Screen rotation — KDE Wayland rotation script"
-
-ROTATE_SCRIPT="/usr/local/bin/kde-rotate.sh"
+ROTATE_SCRIPT="/usr/local/bin/xfce-rotate.sh"
 if [[ -f "$ROTATE_SCRIPT" ]]; then
-    step_skip "kde-rotate.sh already installed"
+    step_skip "xfce-rotate.sh already installed"
 else
-    do_cmd "Copy kde-rotate.sh" cp "$CONFIG_DIR/kde-rotate.sh" "$ROTATE_SCRIPT"
+    do_cmd "Copy xfce-rotate.sh" cp "$CONFIG_DIR/xfce-rotate.sh" "$ROTATE_SCRIPT"
     do_cmd "Make executable" chmod +x "$ROTATE_SCRIPT"
 fi
 
 ROTATE_SERVICE_DIR="/usr/lib/systemd/user"
-ROTATE_SERVICE="$ROTATE_SERVICE_DIR/kde-rotate.service"
+ROTATE_SERVICE="$ROTATE_SERVICE_DIR/xfce-rotate.service"
 if [[ -f "$ROTATE_SERVICE" ]]; then
-    step_skip "kde-rotate.service already installed"
+    step_skip "xfce-rotate.service already installed"
 else
-    do_cmd "Copy kde-rotate.service" cp "$CONFIG_DIR/kde-rotate.service" "$ROTATE_SERVICE"
+    do_cmd "Copy xfce-rotate.service" cp "$CONFIG_DIR/xfce-rotate.service" "$ROTATE_SERVICE"
 fi
 
 # ------------------------------------------------------------------
-# Step 11 — Tablet mode: disable keyboard when lid flipped past 360°
+# Step 10 — Tablet mode: disable keyboard when lid flipped past 360°
 # ------------------------------------------------------------------
-echo -e "\n${GREEN}[STEP 11/${TOTAL}]${NC} Tablet mode — Keyboard disable on lid flip"
+echo -e "\n${GREEN}[STEP 10/${TOTAL}]${NC} Tablet mode — Keyboard disable on lid flip"
 
 TABLET_SCRIPT="/usr/local/bin/tablet-mode-toggle.sh"
 if [[ -f "$TABLET_SCRIPT" ]]; then
@@ -261,9 +225,9 @@ else
 fi
 
 # ------------------------------------------------------------------
-# Step 12 — Journald: limit log volume to reduce eMMC writes
+# Step 11 — Journald: limit log volume to reduce eMMC writes
 # ------------------------------------------------------------------
-echo -e "\n${GREEN}[STEP 12/${TOTAL}]${NC} Journald — Log volume limits"
+echo -e "\n${GREEN}[STEP 11/${TOTAL}]${NC} Journald — Log volume limits"
 
 JOURNALD_CONF="/etc/systemd/journald.conf.d/limits.conf"
 if [[ -f "$JOURNALD_CONF" ]]; then
@@ -275,53 +239,14 @@ else
 fi
 
 # ------------------------------------------------------------------
-# Step 13 — TRIM: weekly fstrim for eMMC
+# Step 12 — TRIM: weekly fstrim for eMMC
 # ------------------------------------------------------------------
-echo -e "\n${GREEN}[STEP 13/${TOTAL}]${NC} TRIM — Weekly fstrim"
+echo -e "\n${GREEN}[STEP 12/${TOTAL}]${NC} TRIM — Weekly fstrim"
 
 if systemctl is-enabled fstrim.timer &>/dev/null 2>&1; then
     step_skip "fstrim.timer already enabled"
 else
     do_cmd "Enable fstrim.timer" systemctl enable --now fstrim.timer
-fi
-
-# ------------------------------------------------------------------
-# Step 14 — mpv: VAAPI hardware decoding config
-# ------------------------------------------------------------------
-echo -e "\n${GREEN}[STEP 14/${TOTAL}]${NC} mpv — VAAPI hardware decoding config"
-
-MPV_CONF_DIR="/etc/mpv"
-MPV_CONF="$MPV_CONF_DIR/mpv.conf"
-if [[ -f "$MPV_CONF" ]] && grep -q "hwdec=vaapi" "$MPV_CONF" 2>/dev/null; then
-    step_skip "mpv VAAPI config already exists"
-else
-    do_cmd "Create mpv config directory" mkdir -p "$MPV_CONF_DIR"
-    do_cmd "Create mpv.conf with VAAPI" bash -c "cat > $MPV_CONF << 'MPV_EOF'
-# Hardware decoding via VAAPI (Intel UHD 615)
-hwdec=vaapi
-hwdec-codecs=all
-vo=gpu-next
-gpu-context=wayland
-MPV_EOF"
-fi
-
-# ------------------------------------------------------------------
-# Step 15 — KDE Plasma VAAPI browser flags
-# ------------------------------------------------------------------
-echo -e "\n${GREEN}[STEP 15/${TOTAL}]${NC} KDE — VAAPI browser flags (Brave/Chromium)"
-
-# Create environment snippet for KDE Plasma to pass VAAPI flags to browsers
-ENV_DIR="/etc/environment.d"
-ENV_FILE="$ENV_DIR/99-vaapi-chromium.conf"
-if [[ -f "$ENV_FILE" ]]; then
-    step_skip "VAAPI browser env config already exists"
-else
-    do_cmd "Create environment.d directory" mkdir -p "$ENV_DIR"
-    do_cmd "Create VAAPI browser flags" bash -c "cat > $ENV_FILE << 'ENV_EOF'
-# VAAPI hardware video decode flags for Chromium/Brave on KDE Wayland
-# These are passed as Chrome flags via the environment
-CHROME_FLAGS="--enable-features=VaapiVideoDecoder,VaapiVideoEncoder,VaapiIgnoreDriverChecks,VaapiVideoDecodeLinuxGL --use-gl=egl"
-ENV_EOF"
 fi
 
 # ------------------------------------------------------------------
@@ -337,17 +262,14 @@ echo "  1. Audio — chrultrabook audio script (prerequisite, checked)"
 echo "  2. Keyboard — keyd remapping (prerequisite, checked)"
 echo "  3. eMMC — noatime,discard in fstab (btrfs) or noatime,nodiratime,commit=60,discard (ext4)"
 echo "  4. Zram — 4 GB lz4, swap-on-disk disabled"
-echo "  5. Touchpad — KDE Plasma Wayland native (no X11 config needed)"
+echo "  5. Touchpad — libinput config (natural scroll, tap-to-click)"
 echo "  6. VAAPI — intel-media-driver installed"
 echo "  7. Brightnessctl — backlight control + udev permissions"
-echo "  8. CPU Governor — performance (persistent via systemd service)"
-echo "  9. Swappiness — set to 10 (persistent via sysctl)"
-echo "  10. Screen rotation — KDE Wayland rotation script (kscreen-doctor)"
-echo "  11. Tablet mode — keyboard disable udev rule (dynamic device discovery)"
-echo "  12. Journald — 50M system / 25M runtime limits"
-echo "  13. TRIM — weekly fstrim enabled"
-echo "  14. mpv — VAAPI hardware decoding config"
-echo "  15. KDE — VAAPI browser flags for Brave/Chromium"
+echo "  8. Xrandr — display rotation support"
+echo "  9. Screen rotation — systemd user service (dynamic device discovery)"
+echo "  10. Tablet mode — keyboard disable udev rule (dynamic device discovery)"
+echo "  11. Journald — 50M system / 25M runtime limits"
+echo "  12. TRIM — weekly fstrim enabled"
 echo ""
 echo "============================================"
 echo " Post-install complete!"
@@ -358,6 +280,6 @@ fi
 echo "============================================"
 echo ""
 echo -e "${YELLOW}After reboot:${NC}"
-echo "  1. Enable rotation service: systemctl --user enable --now kde-rotate.service"
+echo "  1. Enable rotation service: systemctl --user enable --now xfce-rotate.service"
 echo "  2. Run verify.sh to confirm all settings"
 echo ""

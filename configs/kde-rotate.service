@@ -1,11 +1,11 @@
 [Unit]
-Description=Chromebook screen rotation daemon
+Description=Chromebook screen rotation daemon (KDE Wayland)
 After=graphical-session.target
 PartOf=graphical-session.target
 
 [Service]
 Type=simple
-ExecStart=/usr/local/bin/xfce-rotate.sh
+ExecStart=/usr/local/bin/kde-rotate.sh
 Restart=on-failure
 RestartSec=5
 

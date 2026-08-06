@@ -1,5 +1,5 @@
 #!/bin/bash
-# chromebook-linux-postinstall — Verification script (KDE Plasma edition)
+# chromebook-linux-postinstall — Verification script
 # Usage: sudo ./verify.sh
 set -euo pipefail
 
@@ -11,8 +11,8 @@ NC='\033[0m'
 PASSED=0
 TOTAL=0
 
-pass() { PASSED=$((PASSED + 1)); TOTAL=$((TOTAL + 1)); echo -e "  ${GREEN}[PASS]${NC} $1"; }
-fail() { TOTAL=$((TOTAL + 1)); echo -e "  ${RED}[FAIL]${NC} $1"; }
+pass() { PASSED=$((PASSED + 1)); echo -e "  ${GREEN}[PASS]${NC} $1"; }
+fail() { echo -e "  ${RED}[FAIL]${NC} $1"; }
 skip() { echo -e "  ${YELLOW}[SKIP]${NC} $1"; }
 
 check() {
@@ -37,7 +37,6 @@ check_contains() {
 
 echo "============================================"
 echo " Chromebook Linux Post-Install — Verification"
-echo " KDE Plasma Edition"
 echo "============================================"
 echo ""
 
@@ -93,15 +92,21 @@ else
     pass "No swap entries in /etc/fstab"
 fi
 
-# Step 5: Touchpad — KDE Wayland native (no X11 config needed)
-TOTAL=$((TOTAL + 1))
-pass "Touchpad — KDE Plasma Wayland handles natively (no X11 config needed)"
+# Step 5: Touchpad
+if [[ -f /etc/X11/xorg.conf.d/30-touchpad.conf ]]; then
+    TP_CONTENT=$(cat /etc/X11/xorg.conf.d/30-touchpad.conf)
+    check_contains "NaturalScrolling enabled" "NaturalScrolling" "$TP_CONTENT"
+    check_contains "Tapping enabled" "Tapping" "$TP_CONTENT"
+    check_contains "PalmDetection enabled" "PalmDetection" "$TP_CONTENT"
+else
+    fail "30-touchpad.conf missing"
+fi
 
 # Step 6: VAAPI
-if rpm -q libva-intel-media-driver &>/dev/null; then
-    pass "libva-intel-media-driver installed"
+if rpm -q intel-media-driver &>/dev/null; then
+    pass "intel-media-driver installed"
 else
-    fail "libva-intel-media-driver not installed"
+    fail "intel-media-driver not installed"
 fi
 if command -v vainfo &>/dev/null; then
     pass "vainfo installed"
@@ -121,37 +126,26 @@ else
     fail "40-backlight.rules missing"
 fi
 
-# Step 8: CPU Governor
-GOVERNOR=$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor 2>/dev/null || echo "unknown")
-check "CPU governor is performance" "performance" "$GOVERNOR"
-if [[ -f /etc/systemd/system/cpu-governor-performance.service ]]; then
-    pass "CPU governor persistence service exists"
+# Step 8: Xrandr
+if command -v xrandr &>/dev/null; then
+    pass "xrandr installed"
 else
-    fail "CPU governor persistence service missing"
+    fail "xrandr not installed"
 fi
 
-# Step 9: Swappiness
-SWAPPINESS=$(cat /proc/sys/vm/swappiness 2>/dev/null || echo "unknown")
-check "Swappiness is 10" "10" "$SWAPPINESS"
-if [[ -f /etc/sysctl.d/90-swappiness.conf ]]; then
-    pass "Swappiness sysctl config exists"
+# Step 9: Screen rotation
+if [[ -x /usr/local/bin/xfce-rotate.sh ]]; then
+    pass "xfce-rotate.sh exists and executable"
 else
-    fail "Swappiness sysctl config missing"
+    fail "xfce-rotate.sh missing or not executable"
+fi
+if [[ -f /usr/lib/systemd/user/xfce-rotate.service ]]; then
+    pass "xfce-rotate.service exists"
+else
+    fail "xfce-rotate.service missing"
 fi
 
-# Step 10: Screen rotation (KDE Wayland)
-if [[ -x /usr/local/bin/kde-rotate.sh ]]; then
-    pass "kde-rotate.sh exists and executable"
-else
-    fail "kde-rotate.sh missing or not executable"
-fi
-if [[ -f /usr/lib/systemd/user/kde-rotate.service ]]; then
-    pass "kde-rotate.service exists"
-else
-    fail "kde-rotate.service missing"
-fi
-
-# Step 11: Tablet mode
+# Step 10: Tablet mode
 if [[ -x /usr/local/bin/tablet-mode-toggle.sh ]]; then
     pass "tablet-mode-toggle.sh exists and executable"
 else
@@ -163,7 +157,7 @@ else
     fail "99-tablet-mode-keyboard.rules missing"
 fi
 
-# Step 12: Journald limits
+# Step 11: Journald limits
 if [[ -f /etc/systemd/journald.conf.d/limits.conf ]]; then
     JOURNAL_CONTENT=$(cat /etc/systemd/journald.conf.d/limits.conf)
     check_contains "SystemMaxUse=50M" "SystemMaxUse=50M" "$JOURNAL_CONTENT"
@@ -172,25 +166,9 @@ else
     fail "journald limits.conf missing"
 fi
 
-# Step 13: TRIM timer
+# Step 12: TRIM timer
 TRIM_STATUS=$(systemctl is-enabled fstrim.timer 2>/dev/null || echo "missing")
 check "fstrim.timer enabled" "enabled" "$TRIM_STATUS"
-
-# Step 14: mpv VAAPI config
-if [[ -f /etc/mpv/mpv.conf ]]; then
-    MPV_CONTENT=$(cat /etc/mpv/mpv.conf)
-    check_contains "mpv hwdec=vaapi" "hwdec=vaapi" "$MPV_CONTENT"
-else
-    fail "mpv.conf missing"
-fi
-
-# Step 15: KDE VAAPI browser flags
-if [[ -f /etc/environment.d/99-vaapi-chromium.conf ]]; then
-    ENV_CONTENT=$(cat /etc/environment.d/99-vaapi-chromium.conf)
-    check_contains "VAAPI browser flags" "VaapiVideoDecoder" "$ENV_CONTENT"
-else
-    fail "VAAPI browser env config missing"
-fi
 
 echo ""
 echo "============================================"

@@ -1,18 +1,16 @@
 #!/bin/bash
-# XFCE screen rotation for ASUS Chromebook Flip C434
+# KDE Wayland screen rotation for ASUS Chromebook Flip C434
 # Polls the cros-ec-accel display accelerometer and rotates the screen
+# Uses kscreen-doctor for KDE Plasma 6 Wayland rotation
 # Dynamically finds the display accelerometer by mount matrix signature
-# Installed as a systemd user service
 
+# Wait for KDE Plasma to be ready
 for i in $(seq 1 30); do
-    if [[ -S "/tmp/.X11-unix/X0" ]]; then
+    if command -v kscreen-doctor &>/dev/null; then
         break
     fi
     sleep 1
 done
-
-export DISPLAY=":0"
-export XAUTHORITY="${HOME:-/home/$(whoami)}/.Xauthority"
 
 # Find the display accelerometer: the one with mount matrix "0, 1, 0" in the Y row
 find_display_accel() {
@@ -90,25 +88,19 @@ get_orientation() {
     fi
 }
 
-get_monitor() {
-    xrandr --listmonitors 2>/dev/null | grep -oP 'eDP-?\d+' | head -1
-}
-
 current_rotation="normal"
 
 while true; do
-    if MONITOR=$(get_monitor) && [[ -n "$MONITOR" ]]; then
-        new_rotation=$(get_orientation)
-        if [[ -n "$new_rotation" && "$new_rotation" != "$current_rotation" ]]; then
-            case "$new_rotation" in
-                normal)   xrandr --output "$MONITOR" --rotate normal 2>/dev/null ;;
-                left)     xrandr --output "$MONITOR" --rotate left 2>/dev/null ;;
-                right)    xrandr --output "$MONITOR" --rotate right 2>/dev/null ;;
-                inverted) xrandr --output "$MONITOR" --rotate inverted 2>/dev/null ;;
-            esac
-            if [[ $? -eq 0 ]]; then
-                current_rotation="$new_rotation"
-            fi
+    new_rotation=$(get_orientation)
+    if [[ -n "$new_rotation" && "$new_rotation" != "$current_rotation" ]]; then
+        case "$new_rotation" in
+            normal)   kscreen-doctor output.*.rotation.normal 2>/dev/null ;;
+            left)     kscreen-doctor output.*.rotation.left 2>/dev/null ;;
+            right)    kscreen-doctor output.*.rotation.right 2>/dev/null ;;
+            inverted) kscreen-doctor output.*.rotation.inverted 2>/dev/null ;;
+        esac
+        if [[ $? -eq 0 ]]; then
+            current_rotation="$new_rotation"
         fi
     fi
     sleep "$POLL_INTERVAL"
