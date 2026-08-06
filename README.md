@@ -2,7 +2,9 @@
 
 <p align="center"><img src="assets/c434.png" alt="ASUS Chromebook Flip C434" width="400"></p>
 
-**Why this exists:** I bought a second-hand ASUS Chromebook Flip C434 for €20 — turned out to be the 8 GB model, not 4 GB. What started as a cheap vacation laptop became my daily web and media client. After flashing coreboot and following the chrultrabook guide, this script fixes what's left: VAAPI, eMMC tuning, touchpad, screen rotation, tablet mode, zram, journald limits, TRIM, CPU governor, swappiness, mpv config, and browser VAAPI flags. Run `postinstall.sh` after the chrultrabook post-install, then reboot.
+**Why this exists:** 
+
+I bought a second-hand ASUS Chromebook Flip C434 for €20 — turned out to be the 8 GB model, not 4 GB. What started as a cheap vacation laptop became my daily web and media client. After flashing coreboot and following the chrultrabook guide, this script fixes what's left: VAAPI, eMMC tuning, touchpad, screen rotation, tablet mode, zram, journald limits, TRIM, CPU governor, swappiness, mpv config, and browser VAAPI flags. Run `postinstall.sh` after the chrultrabook post-install, then reboot.
 
 **Tested on a fresh Fedora 44 KDE Plasma installation — August 2026.**
 
